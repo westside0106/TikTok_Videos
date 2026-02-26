@@ -1,0 +1,20 @@
+# Telegram Bot
+python-telegram-bot==21.6
+
+# Video Download (all major platforms)
+yt-dlp>=2024.10.1
+
+# AI Transcription (CPU-optimized Whisper)
+faster-whisper==1.0.3
+
+# Audio Analysis
+pydub==0.25.1
+numpy>=1.24.0
+
+# Environment / Config
+python-dotenv==1.0.0
+
+# Note: ffmpeg must be installed at the system level:
+#   Ubuntu/Debian: sudo apt-get install ffmpeg
+#   macOS:         brew install ffmpeg
+#   Windows:       https://ffmpeg.org/download.html (add to PATH)

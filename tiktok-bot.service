@@ -1,0 +1,19 @@
+[Unit]
+Description=TikTok Video Clip Generator Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tiktok-bot
+EnvironmentFile=/opt/tiktok-bot/.env
+ExecStart=/opt/tiktok-bot/venv/bin/python /opt/tiktok-bot/bot.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tiktok-bot
+
+[Install]
+WantedBy=multi-user.target
