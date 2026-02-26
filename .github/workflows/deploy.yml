@@ -22,7 +22,7 @@ jobs:
             set -e
 
             APP_DIR="/opt/tiktok-bot"
-            REPO="https://${{ secrets.GH_TOKEN }}@github.com/westside0106/TikTok_Videos.git"
+            REPO="https://github.com/westside0106/TikTok_Videos.git"
 
             echo "=== System Update ==="
             apt-get update -qq
