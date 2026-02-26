@@ -16,11 +16,13 @@ jobs:
         env:
           SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
         run: |
           export SSHPASS="$SSH_PASSWORD"
-          sshpass -e ssh -o StrictHostKeyChecking=no root@46.225.231.151 bash -s "$BOT_TOKEN" << 'ENDSSH'
+          sshpass -e ssh -o StrictHostKeyChecking=no root@46.225.231.151 bash -s "$BOT_TOKEN" "$DEPLOY_BRANCH" << 'ENDSSH'
           set -e
           BOT_TOKEN="$1"
+          DEPLOY_BRANCH="${2:-main}"
           APP_DIR="/opt/tiktok-bot"
           REPO="https://github.com/westside0106/TikTok_Videos.git"
 
@@ -28,12 +30,14 @@ jobs:
           apt-get update -qq
           apt-get install -y -qq ffmpeg git python3 python3-pip python3-venv
 
-          echo "=== Clone / Update Repo ==="
+          echo "=== Clone / Update Repo (branch: $DEPLOY_BRANCH) ==="
           if [ -d "$APP_DIR/.git" ]; then
-            git -C "$APP_DIR" pull origin main
+            git -C "$APP_DIR" fetch origin
+            git -C "$APP_DIR" checkout "$DEPLOY_BRANCH"
+            git -C "$APP_DIR" pull origin "$DEPLOY_BRANCH"
           else
             rm -rf "$APP_DIR"
-            git clone "$REPO" "$APP_DIR"
+            git clone --branch "$DEPLOY_BRANCH" "$REPO" "$APP_DIR"
           fi
 
           echo "=== Python Virtual Environment ==="
