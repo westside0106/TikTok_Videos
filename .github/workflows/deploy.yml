@@ -89,8 +89,15 @@ jobs:
           systemctl enable tiktok-bot
           systemctl restart tiktok-bot
           sleep 3
-          systemctl status tiktok-bot --no-pager -l
-
+          systemctl status tiktok-bot --no-pager -l || true
           echo ""
-          echo "Bot erfolgreich deployed und gestartet!"
+          echo "=== Journal Log (letzte 30 Zeilen) ==="
+          journalctl -u tiktok-bot -n 30 --no-pager || true
+
+          if systemctl is-active --quiet tiktok-bot; then
+            echo "Bot erfolgreich deployed und gestartet!"
+          else
+            echo "WARNUNG: Bot-Service nicht aktiv - siehe Logs oben"
+            exit 1
+          fi
           ENDSSH
