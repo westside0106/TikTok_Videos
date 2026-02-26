@@ -32,6 +32,7 @@ jobs:
             if [ -d "$APP_DIR/.git" ]; then
               git -C "$APP_DIR" pull origin main
             else
+              rm -rf "$APP_DIR"
               git clone "$REPO" "$APP_DIR"
             fi
 
