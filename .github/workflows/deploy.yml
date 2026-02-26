@@ -9,86 +9,88 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 46.225.231.151
-          username: root
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          script_stop: true
-          script: |
-            set -e
+        env:
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          export SSHPASS="$SSH_PASSWORD"
+          sshpass -e ssh -o StrictHostKeyChecking=no root@46.225.231.151 bash -s "$BOT_TOKEN" << 'ENDSSH'
+          set -e
+          BOT_TOKEN="$1"
+          APP_DIR="/opt/tiktok-bot"
+          REPO="https://github.com/westside0106/TikTok_Videos.git"
 
-            APP_DIR="/opt/tiktok-bot"
-            REPO="https://github.com/westside0106/TikTok_Videos.git"
+          echo "=== System Update ==="
+          apt-get update -qq
+          apt-get install -y -qq ffmpeg git python3 python3-pip python3-venv
 
-            echo "=== System Update ==="
-            apt-get update -qq
-            apt-get install -y -qq ffmpeg git python3 python3-pip python3-venv
+          echo "=== Clone / Update Repo ==="
+          if [ -d "$APP_DIR/.git" ]; then
+            git -C "$APP_DIR" pull origin main
+          else
+            rm -rf "$APP_DIR"
+            git clone "$REPO" "$APP_DIR"
+          fi
 
-            echo "=== Clone / Update Repo ==="
-            if [ -d "$APP_DIR/.git" ]; then
-              git -C "$APP_DIR" pull origin main
-            else
-              rm -rf "$APP_DIR"
-              git clone "$REPO" "$APP_DIR"
-            fi
+          echo "=== Python Virtual Environment ==="
+          python3 -m venv "$APP_DIR/venv"
+          "$APP_DIR/venv/bin/pip" install --upgrade pip -q
+          "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt" -q
 
-            echo "=== Python Virtual Environment ==="
-            python3 -m venv "$APP_DIR/venv"
-            "$APP_DIR/venv/bin/pip" install --upgrade pip -q
-            "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt" -q
+          mkdir -p "$APP_DIR/output" "$APP_DIR/tmp"
 
-            echo "=== Configure .env ==="
-            {
-              echo "TELEGRAM_BOT_TOKEN=${{ secrets.BOT_TOKEN }}"
-              echo "WHISPER_MODEL=base"
-              echo "MAX_CLIPS_PER_VIDEO=3"
-              echo "CLIP_MIN_DURATION=15"
-              echo "CLIP_MAX_DURATION=60"
-              echo "OUTPUT_DIR=./output"
-              echo "TEMP_DIR=./tmp"
-              echo "MAX_VIDEO_DURATION=3600"
-              echo "MAX_FILE_SIZE_MB=500"
-              echo "AUDIO_ENERGY_WEIGHT=0.4"
-              echo "KEYWORD_WEIGHT=0.3"
-              echo "SCENE_CHANGE_WEIGHT=0.3"
-              echo "LOG_LEVEL=INFO"
-              echo "WHISPER_BEAM_SIZE=5"
-            } > "$APP_DIR/.env"
-            chmod 600 "$APP_DIR/.env"
+          echo "=== Configure .env ==="
+          {
+            echo "TELEGRAM_BOT_TOKEN=$BOT_TOKEN"
+            echo "WHISPER_MODEL=base"
+            echo "MAX_CLIPS_PER_VIDEO=3"
+            echo "CLIP_MIN_DURATION=15"
+            echo "CLIP_MAX_DURATION=60"
+            echo "OUTPUT_DIR=./output"
+            echo "TEMP_DIR=./tmp"
+            echo "MAX_VIDEO_DURATION=3600"
+            echo "MAX_FILE_SIZE_MB=500"
+            echo "AUDIO_ENERGY_WEIGHT=0.4"
+            echo "KEYWORD_WEIGHT=0.3"
+            echo "SCENE_CHANGE_WEIGHT=0.3"
+            echo "LOG_LEVEL=INFO"
+            echo "WHISPER_BEAM_SIZE=5"
+          } > "$APP_DIR/.env"
+          chmod 600 "$APP_DIR/.env"
 
-            mkdir -p "$APP_DIR/output" "$APP_DIR/tmp"
-
-            echo "=== Install systemd Service ==="
-            {
-              echo "[Unit]"
-              echo "Description=TikTok Video Clip Generator Bot"
-              echo "After=network-online.target"
-              echo "Wants=network-online.target"
-              echo ""
-              echo "[Service]"
-              echo "Type=simple"
-              echo "User=root"
-              echo "WorkingDirectory=$APP_DIR"
-              echo "EnvironmentFile=$APP_DIR/.env"
-              echo "ExecStart=$APP_DIR/venv/bin/python $APP_DIR/bot.py"
-              echo "Restart=on-failure"
-              echo "RestartSec=10"
-              echo "StandardOutput=journal"
-              echo "StandardError=journal"
-              echo "SyslogIdentifier=tiktok-bot"
-              echo ""
-              echo "[Install]"
-              echo "WantedBy=multi-user.target"
-            } > /etc/systemd/system/tiktok-bot.service
-
-            systemctl daemon-reload
-            systemctl enable tiktok-bot
-            systemctl restart tiktok-bot
-            sleep 3
-            systemctl status tiktok-bot --no-pager -l
-
+          echo "=== Install systemd Service ==="
+          {
+            echo "[Unit]"
+            echo "Description=TikTok Video Clip Generator Bot"
+            echo "After=network-online.target"
+            echo "Wants=network-online.target"
             echo ""
-            echo "Bot erfolgreich deployed und gestartet!"
+            echo "[Service]"
+            echo "Type=simple"
+            echo "User=root"
+            echo "WorkingDirectory=$APP_DIR"
+            echo "EnvironmentFile=$APP_DIR/.env"
+            echo "ExecStart=$APP_DIR/venv/bin/python $APP_DIR/bot.py"
+            echo "Restart=on-failure"
+            echo "RestartSec=10"
+            echo "StandardOutput=journal"
+            echo "StandardError=journal"
+            echo "SyslogIdentifier=tiktok-bot"
+            echo ""
+            echo "[Install]"
+            echo "WantedBy=multi-user.target"
+          } > /etc/systemd/system/tiktok-bot.service
+
+          systemctl daemon-reload
+          systemctl enable tiktok-bot
+          systemctl restart tiktok-bot
+          sleep 3
+          systemctl status tiktok-bot --no-pager -l
+
+          echo ""
+          echo "Bot erfolgreich deployed und gestartet!"
+          ENDSSH
