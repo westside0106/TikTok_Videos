@@ -62,14 +62,33 @@ def extract_chapters(info: dict) -> list:
     return result
 
 
+def _base_ydl_opts() -> dict:
+    """Base yt-dlp options that bypass YouTube bot detection."""
+    return {
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "web"],
+            }
+        },
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/112.0.0.0 Mobile Safari/537.36"
+            ),
+        },
+    }
+
+
 def probe_video(url: str, max_duration: int) -> dict:
     """
     Probe URL metadata without downloading. Returns yt-dlp info dict.
     Raises DownloadError if URL is unsupported or duration exceeds limit.
     """
     ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_base_ydl_opts(),
         "skip_download": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -111,8 +130,7 @@ def download_video(url: str, output_dir: Path, max_duration: int) -> VideoInfo:
 
     # Download video (max 720p is sufficient since we output 1080x1920 portrait)
     video_opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_base_ydl_opts(),
         "format": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
         "outtmpl": video_tmpl,
         "merge_output_format": "mp4",
@@ -125,8 +143,7 @@ def download_video(url: str, output_dir: Path, max_duration: int) -> VideoInfo:
 
     # Extract audio separately for Whisper (much smaller file)
     audio_opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_base_ydl_opts(),
         "format": "bestaudio/best",
         "outtmpl": audio_tmpl,
         "postprocessors": [{
