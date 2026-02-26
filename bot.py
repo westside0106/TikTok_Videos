@@ -185,7 +185,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             # 1. Download
             await _edit_status(status_msg, "⬇️ Lade Video herunter...")
             video_info = await asyncio.to_thread(
-                download_video, url, job_dir, effective_config.max_video_duration
+                download_video, url, job_dir, effective_config.max_video_duration, effective_config.cookies_file
             )
             title_short = video_info.title[:40] + "..." if len(video_info.title) > 40 else video_info.title
             await _edit_status(
