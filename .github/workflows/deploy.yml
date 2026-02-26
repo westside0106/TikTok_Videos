@@ -13,8 +13,8 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: 46.225.231.151
+          username: root
           password: ${{ secrets.SSH_PASSWORD }}
           port: 22
           script_stop: true
