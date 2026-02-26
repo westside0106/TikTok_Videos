@@ -22,7 +22,7 @@ jobs:
             set -e
 
             APP_DIR="/opt/tiktok-bot"
-            REPO="https://github.com/westside0106/TikTok_Videos.git"
+            REPO="https://${{ secrets.GH_TOKEN }}@github.com/westside0106/TikTok_Videos.git"
 
             echo "=== System Update ==="
             apt-get update -qq
@@ -41,48 +41,48 @@ jobs:
             "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt" -q
 
             echo "=== Configure .env ==="
-            cat > "$APP_DIR/.env" <<ENVEOF
-            TELEGRAM_BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-            WHISPER_MODEL=base
-            MAX_CLIPS_PER_VIDEO=3
-            CLIP_MIN_DURATION=15
-            CLIP_MAX_DURATION=60
-            OUTPUT_DIR=./output
-            TEMP_DIR=./tmp
-            MAX_VIDEO_DURATION=3600
-            MAX_FILE_SIZE_MB=500
-            AUDIO_ENERGY_WEIGHT=0.4
-            KEYWORD_WEIGHT=0.3
-            SCENE_CHANGE_WEIGHT=0.3
-            LOG_LEVEL=INFO
-            WHISPER_BEAM_SIZE=5
-            ENVEOF
+            cat > "$APP_DIR/.env" <<'ENVEOF'
+TELEGRAM_BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+WHISPER_MODEL=base
+MAX_CLIPS_PER_VIDEO=3
+CLIP_MIN_DURATION=15
+CLIP_MAX_DURATION=60
+OUTPUT_DIR=./output
+TEMP_DIR=./tmp
+MAX_VIDEO_DURATION=3600
+MAX_FILE_SIZE_MB=500
+AUDIO_ENERGY_WEIGHT=0.4
+KEYWORD_WEIGHT=0.3
+SCENE_CHANGE_WEIGHT=0.3
+LOG_LEVEL=INFO
+WHISPER_BEAM_SIZE=5
+ENVEOF
             chmod 600 "$APP_DIR/.env"
 
             mkdir -p "$APP_DIR/output" "$APP_DIR/tmp"
 
             echo "=== Install systemd Service ==="
             cat > /etc/systemd/system/tiktok-bot.service <<SVCEOF
-            [Unit]
-            Description=TikTok Video Clip Generator Bot
-            After=network-online.target
-            Wants=network-online.target
+[Unit]
+Description=TikTok Video Clip Generator Bot
+After=network-online.target
+Wants=network-online.target
 
-            [Service]
-            Type=simple
-            User=root
-            WorkingDirectory=${APP_DIR}
-            EnvironmentFile=${APP_DIR}/.env
-            ExecStart=${APP_DIR}/venv/bin/python ${APP_DIR}/bot.py
-            Restart=on-failure
-            RestartSec=10
-            StandardOutput=journal
-            StandardError=journal
-            SyslogIdentifier=tiktok-bot
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+ExecStart=${APP_DIR}/venv/bin/python ${APP_DIR}/bot.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tiktok-bot
 
-            [Install]
-            WantedBy=multi-user.target
-            SVCEOF
+[Install]
+WantedBy=multi-user.target
+SVCEOF
 
             systemctl daemon-reload
             systemctl enable tiktok-bot
