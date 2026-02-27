@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 
 URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
 
+SUPPORTED_LANGUAGES = {
+    "auto", "de", "en", "fr", "es", "it", "pt", "nl", "pl", "ru",
+    "tr", "ar", "zh", "ja", "ko", "sv", "da", "fi", "no", "cs",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,6 +58,12 @@ def _get_user_config(context: ContextTypes.DEFAULT_TYPE, base: Config) -> Config
     if "clip_max" in ud:
         overrides["clip_max_duration"] = ud["clip_max"]
     return replace(base, **overrides) if overrides else base
+
+
+def _get_user_language(context: ContextTypes.DEFAULT_TYPE) -> str | None:
+    """Return the user's language hint, or None for auto-detect."""
+    lang = (context.user_data or {}).get("language", "auto")
+    return None if lang == "auto" else lang
 
 
 async def _edit_status(msg, text: str) -> None:
@@ -114,6 +125,7 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     config = context.application.bot_data["config"]
     effective = _get_user_config(context, config)
     ud = context.user_data or {}
+    lang = ud.get("language", "auto")
 
     await update.message.reply_text(
         "⚙️ *Deine Einstellungen*\n\n"
@@ -123,11 +135,15 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"{'(angepasst)' if 'clip_min' in ud else '(Standard)'}\n"
         f"Max. Clip-Länge: *{effective.clip_max_duration}s* "
         f"{'(angepasst)' if 'clip_max' in ud else '(Standard)'}\n"
+        f"Sprache: *{lang}* "
+        f"{'(angepasst)' if 'language' in ud else '(auto)'}\n"
         f"Whisper-Modell: *{effective.whisper_model}*\n\n"
         "Ändern mit:\n"
         "• /set\\_clips 3 (1-5)\n"
         "• /set\\_min 20 (10-30)\n"
-        "• /set\\_max 45 (30-60)",
+        "• /set\\_max 45 (30-60)\n"
+        "• /set\\_lang de  (de, en, auto, …)\n"
+        "• /reset – alles zurücksetzen",
         parse_mode="Markdown",
     )
 
@@ -165,6 +181,51 @@ async def cmd_set_max(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_text("❌ Nutzung: /set_max 60  (Wert: 30-60)")
 
 
+async def cmd_set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        lang = context.args[0].lower()
+        if lang not in SUPPORTED_LANGUAGES:
+            raise ValueError
+        context.user_data["language"] = lang
+        label = "automatische Erkennung" if lang == "auto" else lang
+        await update.message.reply_text(f"✅ Sprache auf *{label}* gesetzt.", parse_mode="Markdown")
+    except (IndexError, ValueError):
+        langs = ", ".join(sorted(SUPPORTED_LANGUAGES))
+        await update.message.reply_text(
+            f"❌ Nutzung: /set\\_lang de\n\nUnterstützte Werte:\n`{langs}`",
+            parse_mode="Markdown",
+        )
+
+
+async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data.clear()
+    await update.message.reply_text(
+        "✅ Alle Einstellungen auf Standard zurückgesetzt.\n"
+        "Tippe /settings um die aktuellen Werte zu sehen."
+    )
+
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    config = context.application.bot_data["config"]
+    model_loaded = "whisper_model" in context.application.bot_data
+    start_time = context.application.bot_data.get("start_time", time.monotonic())
+    uptime_secs = int(time.monotonic() - start_time)
+    uptime_str = format_duration(uptime_secs)
+
+    await update.message.reply_text(
+        "🤖 *Bot-Status*\n\n"
+        f"Uptime: *{uptime_str}*\n"
+        f"Whisper-Modell: *{config.whisper_model}* "
+        f"{'(geladen ✅)' if model_loaded else '(noch nicht geladen)'}\n"
+        f"Max. Video-Länge: *{config.max_video_duration // 60} Min.*\n"
+        f"Max. Clips pro Video: *{config.max_clips_per_video}*\n"
+        f"Clip-Länge: *{config.clip_min_duration}–{config.clip_max_duration}s*\n"
+        f"Max. Upload: *20 MB*\n\n"
+        "Plattformen: YouTube, TikTok, Instagram, Twitch, Kick, Twitter/X, Reddit, Facebook + mehr",
+        parse_mode="Markdown",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Main URL Handler
 # ---------------------------------------------------------------------------
@@ -182,6 +243,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     whisper_model = context.application.bot_data["whisper_model"]
     effective_config = _get_user_config(context, config)
 
+    user_language = _get_user_language(context)
     status_msg = await update.message.reply_text("⏳ Verarbeite dein Video...")
     t_start = time.monotonic()
 
@@ -206,6 +268,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 video_info.audio_path,
                 whisper_model,
                 effective_config.whisper_beam_size,
+                user_language,
             )
 
             # 3. Detect highlights
@@ -333,6 +396,7 @@ async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.application.bot_data["whisper_model"] = load_whisper_model(config.whisper_model)
     whisper_model = context.application.bot_data["whisper_model"]
     effective_config = _get_user_config(context, config)
+    user_language = _get_user_language(context)
 
     status_msg = await msg.reply_text("⏳ Verarbeite dein Video...")
     t_start = time.monotonic()
@@ -384,6 +448,7 @@ async def handle_video_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
                 video_info.audio_path,
                 whisper_model,
                 effective_config.whisper_beam_size,
+                user_language,
             )
 
             # 5. Detect highlights
@@ -478,6 +543,7 @@ def main() -> None:
 
     # Store shared state (whisper model loaded lazily on first use)
     app.bot_data["config"] = config
+    app.bot_data["start_time"] = time.monotonic()
 
     # Register handlers
     app.add_handler(CommandHandler("start", cmd_start))
@@ -486,6 +552,9 @@ def main() -> None:
     app.add_handler(CommandHandler("set_clips", cmd_set_clips))
     app.add_handler(CommandHandler("set_min", cmd_set_min))
     app.add_handler(CommandHandler("set_max", cmd_set_max))
+    app.add_handler(CommandHandler("set_lang", cmd_set_lang))
+    app.add_handler(CommandHandler("reset", cmd_reset))
+    app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video_upload))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(URL_PATTERN), handle_url))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_non_url))

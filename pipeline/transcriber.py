@@ -49,10 +49,11 @@ def load_whisper_model(model_size: str = "base"):
     return _whisper_model
 
 
-def transcribe_audio(audio_path: Path, model, beam_size: int = 5) -> TranscriptResult:
+def transcribe_audio(audio_path: Path, model, beam_size: int = 5, language: str = None) -> TranscriptResult:
     """
     Transcribe audio file with word-level timestamps.
     Returns TranscriptResult with flat list of WordSegments.
+    Pass language='de'/'en'/etc. to skip auto-detection; None = auto.
     """
     if not audio_path.exists():
         raise TranscriptionError(
@@ -69,14 +70,17 @@ def transcribe_audio(audio_path: Path, model, beam_size: int = 5) -> TranscriptR
 
     logger.info("Transcribing %s (%.1f MB)...", audio_path.name, file_size / 1024 / 1024)
 
+    transcribe_kwargs = dict(
+        word_timestamps=True,
+        beam_size=beam_size,
+        vad_filter=True,
+        vad_parameters={"min_silence_duration_ms": 500},
+    )
+    if language and language != "auto":
+        transcribe_kwargs["language"] = language
+
     try:
-        segments, info = model.transcribe(
-            str(audio_path),
-            word_timestamps=True,
-            beam_size=beam_size,
-            vad_filter=True,          # skip silence
-            vad_parameters={"min_silence_duration_ms": 500},
-        )
+        segments, info = model.transcribe(str(audio_path), **transcribe_kwargs)
     except Exception as e:
         raise TranscriptionError(
             f"Whisper transcription error: {e}",

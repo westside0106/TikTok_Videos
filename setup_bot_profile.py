@@ -27,12 +27,15 @@ def main():
 
     # ── 1. Slash-Befehle ──────────────────────────────────────────────────────
     commands = [
-        {"command": "start",      "description": "Bot starten & Begrüßung anzeigen"},
-        {"command": "help",       "description": "Hilfe & unterstützte Plattformen"},
-        {"command": "settings",   "description": "Aktuelle Einstellungen anzeigen"},
-        {"command": "set_clips",  "description": "Anzahl Clips setzen, z.B. /set_clips 3 (1–5)"},
-        {"command": "set_min",    "description": "Minimale Clip-Länge setzen, z.B. /set_min 15 (10–30 s)"},
-        {"command": "set_max",    "description": "Maximale Clip-Länge setzen, z.B. /set_max 60 (30–60 s)"},
+        {"command": "start",     "description": "Bot starten & Begrüßung anzeigen"},
+        {"command": "help",      "description": "Hilfe & unterstützte Plattformen"},
+        {"command": "settings",  "description": "Aktuelle Einstellungen anzeigen"},
+        {"command": "status",    "description": "Bot-Status & Uptime anzeigen"},
+        {"command": "set_clips", "description": "Anzahl Clips setzen, z.B. /set_clips 3  (1–5)"},
+        {"command": "set_min",   "description": "Minimale Clip-Länge, z.B. /set_min 15  (10–30 s)"},
+        {"command": "set_max",   "description": "Maximale Clip-Länge, z.B. /set_max 60  (30–60 s)"},
+        {"command": "set_lang",  "description": "Sprache setzen, z.B. /set_lang de  (de, en, auto …)"},
+        {"command": "reset",     "description": "Alle Einstellungen auf Standard zurücksetzen"},
     ]
     r = api_call(token, "setMyCommands", {"commands": commands})
     print(f"setMyCommands       → {'✅ OK' if r.get('result') else '❌ ' + str(r)}")
@@ -53,9 +56,12 @@ def main():
         "mit eingebrannten Untertiteln.\n\n"
         "Befehle:\n"
         "/settings – Einstellungen anzeigen\n"
+        "/status – Bot-Status & Uptime\n"
         "/set_clips 3 – Anzahl Clips (1–5)\n"
         "/set_min 15 – Minimale Clip-Länge\n"
-        "/set_max 60 – Maximale Clip-Länge"
+        "/set_max 60 – Maximale Clip-Länge\n"
+        "/set_lang de – Sprache (de, en, auto …)\n"
+        "/reset – Einstellungen zurücksetzen"
     )
     r = api_call(token, "setMyDescription", {"description": description})
     print(f"setMyDescription    → {'✅ OK' if r.get('result') else '❌ ' + str(r)}")

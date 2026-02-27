@@ -94,6 +94,9 @@ jobs:
           systemctl restart tiktok-bot
           sleep 3
           systemctl status tiktok-bot --no-pager -l || true
+
+          echo "=== Bot-Profil konfigurieren (Befehle & Beschreibung) ==="
+          "$APP_DIR/venv/bin/python" "$APP_DIR/setup_bot_profile.py" || echo "Warnung: Bot-Profil konnte nicht gesetzt werden"
           echo ""
           echo "=== Journal Log (letzte 30 Zeilen) ==="
           journalctl -u tiktok-bot -n 30 --no-pager || true
