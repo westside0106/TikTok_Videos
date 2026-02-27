@@ -34,7 +34,7 @@ jobs:
           if [ -d "$APP_DIR/.git" ]; then
             git -C "$APP_DIR" fetch origin
             git -C "$APP_DIR" checkout "$DEPLOY_BRANCH"
-            git -C "$APP_DIR" pull origin "$DEPLOY_BRANCH"
+            git -C "$APP_DIR" reset --hard "origin/$DEPLOY_BRANCH"
           else
             rm -rf "$APP_DIR"
             git clone --branch "$DEPLOY_BRANCH" "$REPO" "$APP_DIR"
