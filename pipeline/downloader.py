@@ -62,25 +62,32 @@ def extract_chapters(info: dict) -> list:
     return result
 
 
-def _base_ydl_opts(cookies_file=None) -> dict:
-    """Base yt-dlp options that bypass YouTube bot detection."""
-    opts = {
+def _is_youtube_url(url: str) -> bool:
+    """Return True if the URL belongs to YouTube."""
+    url_lower = url.lower()
+    return "youtube.com" in url_lower or "youtu.be" in url_lower
+
+
+def _base_ydl_opts(cookies_file=None, url: str = "") -> dict:
+    """Base yt-dlp options, with YouTube-specific bypasses applied only for YouTube URLs."""
+    opts: dict = {
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {
+    }
+    if _is_youtube_url(url):
+        # ios and tv_embedded are currently the most reliable clients that
+        # bypass YouTube's bot detection.
+        opts["extractor_args"] = {
             "youtube": {
-                # ios and tv_embedded are currently the most reliable
-                # clients that bypass YouTube's bot detection
                 "player_client": ["ios", "tv_embedded"],
             }
-        },
-        "http_headers": {
+        }
+        opts["http_headers"] = {
             "User-Agent": (
                 "com.google.ios.youtube/19.29.1 "
                 "CFNetwork/1474 Darwin/23.0.0"
             ),
-        },
-    }
+        }
     if cookies_file and Path(cookies_file).exists():
         opts["cookiefile"] = str(cookies_file)
     return opts
@@ -92,7 +99,7 @@ def probe_video(url: str, max_duration: int, cookies_file=None) -> dict:
     Raises DownloadError if URL is unsupported or duration exceeds limit.
     """
     ydl_opts = {
-        **_base_ydl_opts(cookies_file),
+        **_base_ydl_opts(cookies_file, url=url),
         "skip_download": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -134,7 +141,7 @@ def download_video(url: str, output_dir: Path, max_duration: int, cookies_file=N
 
     # Download video (max 720p is sufficient since we output 1080x1920 portrait)
     video_opts = {
-        **_base_ydl_opts(cookies_file),
+        **_base_ydl_opts(cookies_file, url=url),
         "format": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
         "outtmpl": video_tmpl,
         "merge_output_format": "mp4",
@@ -147,7 +154,7 @@ def download_video(url: str, output_dir: Path, max_duration: int, cookies_file=N
 
     # Extract audio separately for Whisper (much smaller file)
     audio_opts = {
-        **_base_ydl_opts(cookies_file),
+        **_base_ydl_opts(cookies_file, url=url),
         "format": "bestaudio/best",
         "outtmpl": audio_tmpl,
         "postprocessors": [{
