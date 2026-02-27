@@ -171,6 +171,8 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     url = url_match.group(0)
     config = context.application.bot_data["config"]
+    if "whisper_model" not in context.application.bot_data:
+        context.application.bot_data["whisper_model"] = load_whisper_model(config.whisper_model)
     whisper_model = context.application.bot_data["whisper_model"]
     effective_config = _get_user_config(context, config)
 
@@ -183,7 +185,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             # 1. Download
             await _edit_status(status_msg, "⬇️ Lade Video herunter...")
             video_info = await asyncio.to_thread(
-                download_video, url, job_dir, effective_config.max_video_duration
+                download_video, url, job_dir, effective_config.max_video_duration, effective_config.cookies_file
             )
             title_short = video_info.title[:40] + "..." if len(video_info.title) > 40 else video_info.title
             await _edit_status(
@@ -288,18 +290,14 @@ def main() -> None:
     config = load_config()
     setup_logging(config.log_level)
 
-    logger.info("Loading Whisper model '%s'...", config.whisper_model)
-    whisper_model = load_whisper_model(config.whisper_model)
-
     # Ensure directories exist
     config.output_dir.mkdir(parents=True, exist_ok=True)
     config.temp_dir.mkdir(parents=True, exist_ok=True)
 
     app = Application.builder().token(config.telegram_bot_token).build()
 
-    # Store shared state
+    # Store shared state (whisper model loaded lazily on first use)
     app.bot_data["config"] = config
-    app.bot_data["whisper_model"] = whisper_model
 
     # Register handlers
     app.add_handler(CommandHandler("start", cmd_start))

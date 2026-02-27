@@ -1,3 +1,4 @@
+import json
 import logging
 import subprocess
 from dataclasses import dataclass
@@ -26,21 +27,36 @@ class VideoEditError(Exception):
 
 
 def get_video_dimensions(video_path: Path) -> tuple:
-    """Use ffprobe to get width and height of the video."""
+    """
+    Use ffprobe to get the display width and height of the video.
+    Respects rotation metadata: mobile-shot videos (TikTok, Instagram, etc.)
+    are often stored as landscape (e.g. 1920x1080) with a 90° or 270° rotate
+    tag. We swap w/h in that case so the crop math works correctly.
+    """
     cmd = [
         "ffprobe", "-v", "error",
         "-select_streams", "v:0",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0",
+        "-show_entries", "stream=width,height,tags",
+        "-of", "json",
         str(video_path),
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0 and result.stdout.strip():
-            parts = result.stdout.strip().split(",")
-            if len(parts) >= 2:
-                return int(parts[0]), int(parts[1])
-    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError) as e:
+            data = json.loads(result.stdout)
+            streams = data.get("streams", [])
+            if streams:
+                w = int(streams[0].get("width", 1280))
+                h = int(streams[0].get("height", 720))
+                # Check the rotate tag (stored as a string like "90", "270", etc.)
+                tags = streams[0].get("tags", {})
+                rotate = int(tags.get("rotate", tags.get("Rotate", 0)))
+                if rotate in (90, 270, -90, -270):
+                    logger.debug("Swapping dimensions due to rotation=%d (%dx%d → %dx%d)",
+                                 rotate, w, h, h, w)
+                    w, h = h, w
+                return w, h
+    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         logger.warning("ffprobe failed: %s", e)
     return 1280, 720  # fallback to common 720p
 

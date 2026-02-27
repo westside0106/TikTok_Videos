@@ -107,9 +107,12 @@ def _group_words_into_lines(words: list, words_per_line: int = WORDS_PER_LINE) -
 def _build_dialogue_lines(words: list, style: SubtitleStyle) -> list:
     """
     Build all ASS Dialogue lines for the clip.
-    Uses two-layer technique:
-      Layer 0: Full line in white (baseline)
-      Layer 1: Full line with one word highlighted yellow (per word)
+    One dialogue event per word: shows the full line with only the current
+    word highlighted in yellow, all other words in white.
+
+    Avoiding two layers here prevents the double-text / overlap artefact that
+    occurred when a white baseline (Layer 0) was rendered under each yellow
+    highlight (Layer 1) at the same position.
     """
     if not words:
         return []
@@ -121,26 +124,18 @@ def _build_dialogue_lines(words: list, style: SubtitleStyle) -> list:
         if not group:
             continue
 
-        line_start = seconds_to_ass_time(group[0].start)
-        # Add 0.3s buffer after last word so text doesn't vanish abruptly
-        line_end = seconds_to_ass_time(group[-1].end + 0.3)
-        full_text = " ".join(w.word.strip() for w in group)
-
-        # Layer 0: white baseline line
-        lines.append(
-            f"Dialogue: 0,{line_start},{line_end},Default,,0,0,0,,{{\\an2}}{full_text}"
-        )
-
-        # Layer 1: one event per word, that word highlighted yellow
+        # One event per word: full line with that word highlighted
         for i, word in enumerate(group):
             w_start = seconds_to_ass_time(word.start)
-            w_end = seconds_to_ass_time(word.end + 0.05)  # tiny overlap for smoothness
+            # Keep showing until next word starts (or +0.3 s after last word)
+            if i < len(group) - 1:
+                w_end = seconds_to_ass_time(group[i + 1].start)
+            else:
+                w_end = seconds_to_ass_time(word.end + 0.3)
 
-            # Rebuild full line with only current word in yellow
             highlighted_text = _build_highlighted_line(group, i, style)
-
             lines.append(
-                f"Dialogue: 1,{w_start},{w_end},Default,,0,0,0,,{{\\an2}}{highlighted_text}"
+                f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{{\\an2}}{highlighted_text}"
             )
 
     return lines

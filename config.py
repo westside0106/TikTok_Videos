@@ -20,6 +20,7 @@ class Config:
     keyword_weight: float = 0.3
     scene_change_weight: float = 0.3
     log_level: str = "INFO"
+    cookies_file: Path = Path("/home/user/TikTok_Videos/cookies.txt")
     tiktok_keywords: list = field(default_factory=lambda: [
         "wait", "listen", "actually", "insane", "crazy", "no way",
         "what", "omg", "wow", "legendary", "fail", "win", "sick",
@@ -55,4 +56,5 @@ def load_config() -> Config:
         keyword_weight=float(os.getenv("KEYWORD_WEIGHT", 0.3)),
         scene_change_weight=float(os.getenv("SCENE_CHANGE_WEIGHT", 0.3)),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
+        cookies_file=Path(os.getenv("COOKIES_FILE", "/home/user/TikTok_Videos/cookies.txt")),
     )
