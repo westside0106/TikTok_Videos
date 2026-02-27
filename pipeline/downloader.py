@@ -69,14 +69,15 @@ def _base_ydl_opts(cookies_file=None) -> dict:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web"],
+                # ios and tv_embedded are currently the most reliable
+                # clients that bypass YouTube's bot detection
+                "player_client": ["ios", "tv_embedded"],
             }
         },
         "http_headers": {
             "User-Agent": (
-                "Mozilla/5.0 (Linux; Android 12; Pixel 6) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/112.0.0.0 Mobile Safari/537.36"
+                "com.google.ios.youtube/19.29.1 "
+                "CFNetwork/1474 Darwin/23.0.0"
             ),
         },
     }
