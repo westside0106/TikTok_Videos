@@ -75,18 +75,14 @@ def _base_ydl_opts(cookies_file=None, url: str = "") -> dict:
         "no_warnings": True,
     }
     if _is_youtube_url(url):
-        # ios and tv_embedded are currently the most reliable clients that
-        # bypass YouTube's bot detection.
+        # tv_embedded is the most reliable client for bypassing YouTube bot
+        # detection without authentication; mweb and web are kept as fallbacks.
+        # The ios client has become unreliable since 2025 and is intentionally
+        # omitted here.
         opts["extractor_args"] = {
             "youtube": {
-                "player_client": ["ios", "tv_embedded"],
+                "player_client": ["tv_embedded", "mweb", "web"],
             }
-        }
-        opts["http_headers"] = {
-            "User-Agent": (
-                "com.google.ios.youtube/19.29.1 "
-                "CFNetwork/1474 Darwin/23.0.0"
-            ),
         }
     if cookies_file and Path(cookies_file).exists():
         opts["cookiefile"] = str(cookies_file)

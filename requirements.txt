@@ -2,7 +2,7 @@
 python-telegram-bot==21.6
 
 # Video Download (all major platforms)
-yt-dlp>=2024.10.1
+yt-dlp  # always latest; upgraded explicitly in deploy
 
 # AI Transcription (CPU-optimized Whisper)
 faster-whisper==1.0.3
